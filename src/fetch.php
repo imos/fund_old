@@ -54,7 +54,7 @@ function ParseFundCsv($data) {
 function FetchFund($fund_id) {
   $path = "data/{$fund_id}.txt";
   if (file_exists($path)) {
-    $info = json_decode(file_get_contents($path));
+    $info = json_decode(file_get_contents($path), true);
     // The data was recently updated.
     if (time() - 14 * 24 * 3600 < $info['modified']) {
       return;
