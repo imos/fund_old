@@ -19,7 +19,7 @@ unsigned long RandomInteger(){
   return w = (w ^ (w >> 19)) ^ (t ^ (t >> 8)); 
 } 
 
-constexpr int64 kCounter = 10000;
+constexpr int64 kCounter = 1000;
 constexpr int64 kBucketScale = 1000;
 constexpr double kBucketRange = 2.0;
 constexpr int64 kQueueSize = 200;

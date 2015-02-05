@@ -2,7 +2,7 @@
 
 date_default_timezone_set('UTC');
 
-function FetchFundCsvSource($fund_id) {
+function FetchFundCsvSource($fund_id, $is_distribution) {
   $parameters = [
       'in_term_from_yyyy' => '2011',
       'in_term_from_mm' => '01',
@@ -15,7 +15,13 @@ function FetchFundCsvSource($fund_id) {
       'Content-Type: application/x-www-form-urlencoded',
       'Content-Length: ' . strlen($content)];
   return mb_convert_encoding(file_get_contents(
-      "https://site0.sbisec.co.jp/marble/fund/history/standardprice/standardPriceHistoryCsvAction.do?fund_sec_code={$fund_id}",
+      $is_distribution
+          ? ("https://site0.sbisec.co.jp/marble/fund/history/" .
+             "distribution/distributionHistoryCsvAction.do?" .
+             "fund_sec_code={$fund_id}")
+          : ("https://site0.sbisec.co.jp/marble/fund/history/" .
+             "standardprice/standardPriceHistoryCsvAction.do?" .
+             "fund_sec_code={$fund_id}"),
       false,
       stream_context_create([
           'http' => [
@@ -24,9 +30,13 @@ function FetchFundCsvSource($fund_id) {
               'content' => $content]])), 'UTF-8', 'Shift_JIS');
 }
 
-function FetchFundCsv($fund_id) {
+function FetchFundCsv($fund_id, $is_distribution) {
   $data = [];
-  $csv = trim(str_replace("\r", '', FetchFundCsvSource($fund_id)));
+  $csv = trim(str_replace(
+      "\r", '', FetchFundCsvSource($fund_id, $is_distribution)));
+  if ($csv == '') {
+    die("Response is empty: $fund_id, $is_distribution\n");
+  }
   if (strpos($csv, '<html') !== FALSE) {
     die("Failed to fetch ${fund_id}.\n");
   }
@@ -37,7 +47,8 @@ function FetchFundCsv($fund_id) {
 }
 
 function ParseFundCsv($data) {
-  if ($data[0][0] != '基準価額一覧') {
+  if ($data[0][0] != '基準価額一覧' &&
+      $data[0][0] != '分配金実績') {
     die("Invalid data: {$data[0][0]}\n");
   }
   $prices = [];
@@ -61,7 +72,9 @@ function FetchFund($fund_id) {
     }
   }
   fwrite(STDERR, "Fetching $fund_id...\n");
-  $data = ParseFundCsv(FetchFundCsv($fund_id));
+  $data = ParseFundCsv(FetchFundCsv($fund_id, false));
+  $distributions = ParseFundCsv(FetchFundCsv($fund_id, true));
+  $data['distributions'] = $distributions['prices'];
   fwrite(STDERR, "Outputting $fund_id...\n");
   file_put_contents($path, json_encode($data, JSON_PRETTY_PRINT |
                                               JSON_UNESCAPED_UNICODE));
