@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <algorithm>
 #include <vector>
 using namespace std;
@@ -17,52 +18,88 @@ unsigned long RandomInteger(){
   y = z;
   z = w;
   return w = (w ^ (w >> 19)) ^ (t ^ (t >> 8)); 
-} 
-
-constexpr int64 kCounter = 1000;
-constexpr int64 kBucketScale = 1000;
-constexpr double kBucketRange = 2.0;
-constexpr int64 kQueueSize = 200;
-
-inline void IncrementBucket(double growth_rate, vector<int64>* buckets) {
-  int64 index =
-      round((growth_rate + kBucketRange) / kBucketRange * kBucketScale);
-  (*buckets)[max(min(index, kBucketScale * 2), 0LL)]++;
 }
 
-void Calculate(const vector<double> growth_rates) {
-  vector<int64> buckets(kBucketScale * 2 + 1, 0);
-  vector<double> growth_queue(kQueueSize, 0);
-  double growth_rate = 0.0;
-  int64 count = 0;
-  for (int trial = 0; trial < kCounter; trial++) {
-    for (int i = 0; i < kQueueSize; i++) {
-      growth_rate -= growth_queue[i];
-      growth_queue[i] = growth_rates[RandomInteger() % growth_rates.size()];
-      growth_rate += growth_queue[i];
-      if (trial != 0) {
-        IncrementBucket(growth_rate, &buckets);
-        count++;
+int64 GetEnvironmentInteger(const char* name, int64 default_value) {
+  const char* value = getenv(name);
+  int64 result;
+  if (value != nullptr && sscanf(value, "%lld", &result) > 0) {
+    return result;
+  }
+  return default_value;
+}
+
+class Bootstrap {
+ public:
+  const double kBucketRange = 0.01;
+
+  Bootstrap()
+      : buckets_(GetEnvironmentInteger("BOOTSTRAP_BUCKET_SIZE", 200000)),
+        trial_(GetEnvironmentInteger("BOOTSTRAP_TRIAL", 1000000LL)),
+        leap_(GetEnvironmentInteger("BOOTSTRAP_LEAP", 1)) {}
+
+  void Calculate(const vector<double> growth_rates) {
+    vector<double> growth_accumulated_rates(GetAccumulatedRates(growth_rates));
+    vector<double> growth_queue(growth_rates.size());
+    const int trial_count = trial_ / growth_rates.size();
+    double growth_rate_sum = 0.0;
+    for (int trial = 0; trial < trial_count; trial++) {
+      for (int index = 0; index < growth_queue.size(); index++) {
+        int position = RandomInteger() % (growth_rates.size() - leap_ + 1);
+        double growth_rate = (growth_accumulated_rates[position + leap_] -
+                              (position == 0 ? 0.0 :
+                                   growth_accumulated_rates[position - 1])) /
+                             leap_;
+        growth_rate_sum -= growth_queue[index];
+        growth_queue[index] = growth_rate;
+        growth_rate_sum += growth_rate;
+        if (trial != 0) {
+          IncrementBucket(growth_rate_sum / growth_queue.size());
+        }
       }
     }
   }
-  int index = 0;
-  double percentage = 0.0;
-  for (int shift = 10; shift > 0; shift--) {
-    double threshold = pow(0.1, shift / 5.0);
-    while (percentage < threshold) {
-      percentage += static_cast<double>(buckets[index]) / count;
-      index++;
+
+  void PrintPercentage() {
+    int64 count = 0;
+    for (const int64 bucket : buckets_) {
+      count += bucket;
     }
-    printf("%.3f",
-           static_cast<double>(index - kBucketScale) /
-               kBucketScale * kBucketRange);
-    if (shift != 1) {
-      printf("\t");
+    int index = 0;
+    int64 total = 0;
+    for (int power = 6; power > 0; power--) {
+      for (int64 threshold = pow(0.01, power / 6.0) * count;
+           total < threshold; index++) {
+        total += buckets_[index];
+      }
+      printf("%+.7f",
+             (static_cast<double>(index) / buckets_.size() * 2 - 1) *
+                 kBucketRange);
+      printf(power == 1 ? "\n" : "\t");
     }
   }
-  puts("");
-}
+
+ private:
+  vector<double> GetAccumulatedRates(const vector<double> growth_rates) {
+    vector<double> growth_accumulated_rates(growth_rates);
+    double previous_rate = 0.0;
+    for (double& rate : growth_accumulated_rates) {
+      rate += previous_rate;
+      previous_rate = rate;
+    }
+    return growth_accumulated_rates;
+  }
+
+  void IncrementBucket(double growth_rate) {
+    int64 index = round(
+        (growth_rate / kBucketRange / 2 + 0.5) * buckets_.size());
+    buckets_[max(min(index, static_cast<int64>(buckets_.size()) - 1), 0LL)]++;
+  }
+
+  vector<int64> buckets_;
+  const int64 trial_;
+  const int64 leap_;
+};
 
 int main() {
   vector<double> growth_rates;
@@ -71,5 +108,8 @@ int main() {
     if (old_price < 0.0) continue;
     growth_rates.push_back(log(price) - log(old_price));
   }
-  Calculate(growth_rates);
+  Bootstrap bootstrap;
+  bootstrap.Calculate(growth_rates);
+  bootstrap.PrintPercentage();
+  return 0;
 }
