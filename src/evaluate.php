@@ -24,7 +24,6 @@ foreach ($price_history as $month => $prices) {
       $prices[] = $price;
     }
   }
-  if ($month != '2014-08') continue;
   if (count($prices) > 0) {
     $last_month = $months[count($months) - 2];
     $score = log($price_history[$month][count($price_history[$month]) - 1]) -
