@@ -1,8 +1,11 @@
 <?php
 
+define('DIVERSIFICATION', 10);
+
 date_default_timezone_set('UTC');
 
 $result = [];
+$funds_history = [];
 for ($key = 2; $key <= 11; $key++) {
   $data = [];
   foreach (glob('result/*') as $file) {
@@ -10,7 +13,7 @@ for ($key = 2; $key <= 11; $key++) {
     foreach (explode("\n", trim(file_get_contents($file))) as $line) {
       $line = explode("\t", $line);
       if (trim($line[0]) == '') continue;
-      $data[$line[0]][sprintf("%.4f%s", floatval($line[$key]) + 5, $id)] =
+      $data[$line[0]][sprintf("%.4f\t%s", floatval($line[$key]) + 5, $id)] =
           $line;
     }
   }
@@ -18,10 +21,18 @@ for ($key = 2; $key <= 11; $key++) {
   ksort($data);
   foreach ($data as $month => $report) {
     krsort($report);
+    $funds = [];
+    foreach (array_slice(array_keys($report), 0, DIVERSIFICATION) as $id) {
+      list($_, $id) = explode("\t", $id, 2);
+      $info = json_decode(file_get_contents("data/$id.txt"), true);
+      $funds[] = $info['name'];
+    }
+    $funds_history[$key][$month] = $funds;
+
     $report = array_values($report);
     $score = 0;
     $count = 0;
-    for ($i = 0; $i < 10; $i++) {
+    for ($i = 0; $i < DIVERSIFICATION; $i++) {
       $score += $report[$i][1];
       $count++;
     }
@@ -43,3 +54,5 @@ foreach ($total as $key => $score) {
   printf("\t%+d%%", (exp($score / count($result) * 12) - 1.0) * 100);
 }
 echo "\n";
+
+print_r($funds_history[5]);
