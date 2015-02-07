@@ -20,7 +20,7 @@ shuffle($outputs);
 file_put_contents(
     $tmpfile,
     "all: " . implode(' ', $outputs) . "\n\n" .
-    "%:\n\techo \$* >&2\n\tmake \$*\n");
+    "%:\n\techo \$* >&2\n\t+make \$*\n");
 
 $parallel = intval(getenv('PARALLEL')) ?: 1;
 exec("make -j $parallel -f $tmpfile");
