@@ -7,10 +7,14 @@ fetch:
 bootstrap: bin/bootstrap
 
 evaluate: bootstrap
+	mkdir -p result
 	php src/evaluate_all.php
 
 result/%: bootstrap
-	php src/evaluate.php data/$* > result/$*
+	mkdir -p result
+	BOOTSTRAP_PERIOD='$(word 1,$(subst /, ,$*))' \
+	BOOTSTRAP_LEAP='$(word 2,$(subst /, ,$*))' \
+	php src/evaluate.php data/$(notdir $*) > result/$*
 
 bin/bootstrap: src/bootstrap.cc
 	mkdir -p bin

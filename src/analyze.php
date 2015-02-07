@@ -6,7 +6,7 @@ date_default_timezone_set('UTC');
 
 $result = [];
 $funds_history = [];
-for ($key = 2; $key <= 11; $key++) {
+for ($key = 2; $key <= 7; $key++) {
   $data = [];
   foreach (glob('result/*') as $file) {
     $id = str_replace(['result/', '.txt'], '', $file);
@@ -25,7 +25,7 @@ for ($key = 2; $key <= 11; $key++) {
     foreach (array_slice(array_keys($report), 0, DIVERSIFICATION) as $id) {
       list($_, $id) = explode("\t", $id, 2);
       $info = json_decode(file_get_contents("data/$id.txt"), true);
-      $funds[] = $info['name'];
+      $funds[] = $id . ': ' . $info['name'];
     }
     $funds_history[$key][$month] = $funds;
 
@@ -42,10 +42,11 @@ for ($key = 2; $key <= 11; $key++) {
 
 $total = [];
 foreach ($result as $month => $report) {
+  if ($month < '2013') continue;
   echo "$month";
   foreach ($report as $key => $score) {
     $total[$key] += $score;
-    printf("\t%.4f", $score);
+    printf("\t%+.4f", $score);
   }
   echo "\n";
 }
@@ -55,4 +56,4 @@ foreach ($total as $key => $score) {
 }
 echo "\n";
 
-print_r($funds_history[5]);
+print_r($funds_history[4]);

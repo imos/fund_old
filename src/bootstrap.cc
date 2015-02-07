@@ -36,11 +36,11 @@ class Bootstrap {
   Bootstrap()
       : buckets_(GetEnvironmentInteger("BOOTSTRAP_BUCKET_SIZE", 200000)),
         trial_(GetEnvironmentInteger("BOOTSTRAP_TRIAL", 1000000LL)),
-        leap_(GetEnvironmentInteger("BOOTSTRAP_LEAP", 1)) {}
+        leap_(GetEnvironmentInteger("BOOTSTRAP_LEAP", 10)) {}
 
   void Calculate(const vector<double> growth_rates) {
     vector<double> growth_accumulated_rates(GetAccumulatedRates(growth_rates));
-    vector<double> growth_queue(growth_rates.size());
+    vector<double> growth_queue(growth_rates.size() / leap_);
     const int trial_count = trial_ / growth_rates.size();
     double growth_rate_sum = 0.0;
     for (int trial = 0; trial < trial_count; trial++) {
@@ -67,16 +67,22 @@ class Bootstrap {
     }
     int index = 0;
     int64 total = 0;
-    for (int power = 6; power > 0; power--) {
-      for (int64 threshold = pow(0.01, power / 6.0) * count;
+    bool first = true;
+    for (int power = -10; power <= 10; power++) {
+      if (first) {
+        first = false;
+      } else {
+        printf("\t");
+      }
+      for (int64 threshold = 1.0 / (1.0 + exp(-power * 0.5)) * count;
            total < threshold; index++) {
         total += buckets_[index];
       }
       printf("%+.7f",
              (static_cast<double>(index) / buckets_.size() * 2 - 1) *
                  kBucketRange);
-      printf(power == 1 ? "\n" : "\t");
     }
+    printf("\n");
   }
 
  private:
