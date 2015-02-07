@@ -6,7 +6,7 @@
 #include <vector>
 using namespace std;
 
-typedef int64_t int64;
+typedef long long int int64;
 
 unsigned long RandomInteger(){ 
   static unsigned long x = 123456789;
