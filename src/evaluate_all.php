@@ -5,8 +5,8 @@ $tmpfile = tempnam('/tmp', 'fund');
 
 $outputs = [];
 foreach ($files as $file) {
-  foreach ([16, 8, 4, 2, 1] as $period) {
-    foreach ([1, 5, 15] as $leap) {
+  foreach ([24, 16, 8, 4, 2, 1] as $period) {
+    foreach ([1, 5, 15, 40] as $leap) {
       if (!is_dir("result/$period/$leap")) {
         mkdir("result/$period/$leap", 0777, true);
       }
