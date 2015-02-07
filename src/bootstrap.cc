@@ -99,7 +99,13 @@ class Bootstrap {
   void IncrementBucket(double growth_rate) {
     int64 index = round(
         (growth_rate / kBucketRange / 2 + 0.5) * buckets_.size());
-    buckets_[max(min(index, static_cast<int64>(buckets_.size()) - 1), 0LL)]++;
+    if (buckets_.size() <= index) {
+      index = buckets_.size() - 1;
+    }
+    if (index < 0) {
+      index = 0;
+    }
+    buckets_[index]++;
   }
 
   vector<int64> buckets_;
